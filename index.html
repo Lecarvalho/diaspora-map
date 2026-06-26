@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Demographic Regions</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.95);
+            --text-color: #f8fafc;
+            --accent: #38bdf8;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color); color: var(--text-color);
+            overflow: hidden;
+        }
+        #menu-toggle {
+            position: absolute; top: 15px; left: 15px; z-index: 1001;
+            background: var(--panel-bg); border: 1px solid var(--border); color: var(--text-color);
+            width: 44px; height: 44px; border-radius: 10px; font-size: 1.5rem;
+            cursor: pointer; backdrop-filter: blur(10px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: none; justify-content: center; align-items: center;
+        }
+        #sidebar {
+            position: absolute; top: 0; left: 0; height: 100%; z-index: 1000;
+            background: var(--panel-bg); backdrop-filter: blur(16px);
+            padding: 24px; width: 300px;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.4); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #sidebar h2 { margin: 0 0 4px 0; font-size: 1.2rem; color: var(--accent); white-space: nowrap; }
+        #sidebar p { margin: 0 0 10px 0; font-size: 0.75rem; color: #94a3b8; line-height: 1.3; }
+
+        .radio-group { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding-right: 8px; }
+        .radio-group::-webkit-scrollbar { width: 6px; }
+        .radio-group::-webkit-scrollbar-track { background: transparent; }
+        .radio-group::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        label {
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            font-size: 0.85rem; padding: 5px 8px; border-radius: 6px; transition: background 0.2s; flex-shrink: 0;
+        }
+        label:hover { background: rgba(255,255,255,0.05); }
+        input[type="radio"] { display: none; }
+        .custom-radio {
+            width: 16px; height: 16px; border-radius: 50%; border: 2px solid #475569;
+            display: flex; justify-content: center; align-items: center; flex-shrink: 0; transition: all 0.2s;
+        }
+        input[type="radio"]:checked ~ .custom-radio { border-color: var(--accent); }
+        input[type="radio"]:checked ~ .custom-radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+        .color-swatch { width: 20px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2); flex-shrink: 0; }
+
+        #country-profile {
+            position: absolute; top: 0; right: 0; height: 100%; width: 380px; z-index: 1000;
+            background: var(--panel-bg); backdrop-filter: blur(16px);
+            border-left: 1px solid var(--border); box-shadow: -4px 0 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column;
+            transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #country-profile.open { transform: translateX(0); }
+
+        .profile-header {
+            padding: 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .profile-header h3 { margin: 0 0 4px 0; font-size: 1.5rem; color: var(--text-color); }
+        .profile-header span { font-size: 0.8rem; color: #94a3b8; }
+        #close-profile {
+            background: none; border: 1px solid var(--border); color: var(--text-color); border-radius: 8px;
+            width: 32px; height: 32px; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        #close-profile:hover { background: rgba(255,255,255,0.1); }
+
+        .profile-list { flex-grow: 1; overflow-y: auto; padding: 10px 0; }
+        .profile-list::-webkit-scrollbar { width: 6px; }
+        .profile-list::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        .profile-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 24px; border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.2s;
+        }
+        .profile-item:hover { background: rgba(255,255,255,0.03); }
+        .profile-item-left { display: flex; align-items: center; gap: 12px; }
+        .profile-item-count { font-weight: bold; font-size: 1.1rem; color: #4ade80; text-align: right; }
+        .no-data-msg { padding: 24px; text-align: center; color: #64748b; font-size: 0.9rem; }
+
+        #map { width: 100%; height: 100%; background-color: var(--bg-color); cursor: pointer !important; }
+
+        #loading {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex; justify-content: center;
+            align-items: center; z-index: 2000; font-size: 1.2rem; color: var(--accent); flex-direction: column; gap: 10px;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            #menu-toggle { display: flex; }
+            #sidebar { transform: translateX(-100%); width: 85vw; max-width: 320px; box-shadow: 8px 0 32px rgba(0,0,0,0.6); }
+            #sidebar.open { transform: translateX(0); }
+            #country-profile { width: 100%; height: 50vh; top: auto; bottom: 0; transform: translateY(100%); border-left: none; border-top: 1px solid var(--border); }
+            #country-profile.open { transform: translateY(0); }
+        }
+        @media (min-width: 769px) {
+            #menu-toggle { display: none; }
+            #sidebar { transform: translateX(0) !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <button id="menu-toggle">☰</button>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Global Boundaries...</div>
+    </div>
+
+    <div id="sidebar">
+        <h2>🌍 Filter by Origin</h2>
+        <p>Click a country on the map to see its demographics, OR use this to highlight a specific diaspora.</p>
+        <div class="radio-group" id="controls">
+            <label>
+                <input type="radio" name="nat" value="none" checked>
+                <span class="custom-radio"></span>
+                <span style="color: #94a3b8;">Show None (Base Map)</span>
+            </label>
+        </div>
+    </div>
+
+    <div id="country-profile">
+        <div class="profile-header">
+            <div>
+                <h3 id="profile-title">Country</h3>
+                <span>Demographics by Nationality</span>
+            </div>
+            <button id="close-profile">✕</button>
+        </div>
+        <div id="profile-list" class="profile-list"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script>
+        const toggleBtn = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const profilePanel = document.getElementById('country-profile');
+        const profileTitle = document.getElementById('profile-title');
+        const profileList = document.getElementById('profile-list');
+        const closeProfileBtn = document.getElementById('close-profile');
+
+        toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
+        closeProfileBtn.addEventListener('click', () => profilePanel.classList.remove('open'));
+        document.getElementById('map').addEventListener('click', () => { if(window.innerWidth <= 768) sidebar.classList.remove('open'); });
+
+        // --- DIASPORA DATA ---------------------------------------------------------
+        // Each nationality has a default basis `b`:
+        //   "ancestry"     = people of that descent (may be 2nd/3rd-gen, partial ancestry)
+        //   "foreign-born" = immigrants actually born in the origin country
+        //   "ethnic"       = ethnic minority within a neighbouring state (census self-ID)
+        // A destination value can be a plain number (uses the nationality default basis)
+        // OR an object {n, b, note} to override the basis / attach a caveat for that one cell.
+        // NOTE: basis tags are best-effort; many diaspora figures genuinely mix definitions.
+        const D = {
+            "Angolan": { c:"#f472b6", b:"foreign-born", d:{ "Portugal":200000, "Brazil":120000, "South Africa":50000, "United States of America":30000 } },
+            "Afghan": { c:"#e879f9", b:"foreign-born", d:{ "Pakistan":3000000, "Iran":3000000, "Germany":250000, "United States of America":150000, "Canada":80000 } },
+            "Bangladeshi": { c:"#2dd4bf", b:"foreign-born", d:{ "India":{n:3000000, note:"politically contested; no firm census basis"}, "Saudi Arabia":2500000, "United Arab Emirates":1500000, "United Kingdom":500000, "Malaysia":300000 } },
+            "Brazilian": { c:"#06b6d4", b:"foreign-born", d:{ "United States of America":1500000, "Portugal":400000, "Paraguay":350000, "Japan":200000, "Canada":120000, "United Kingdom":150000, "Argentina":100000 } },
+            "British": { c:"#f43f5e", b:"foreign-born", d:{ "Australia":1200000, "United States of America":750000, "Canada":600000, "Spain":300000, "France":200000 } },
+            "Bolivian": { c:"#a3e635", b:"foreign-born", d:{ "Brazil":400000, "Argentina":300000, "Spain":150000, "United States of America":100000, "Chile":80000 } },
+            "Chinese": { c:"#ef4444", b:"ancestry", d:{ "United States of America":5000000, "Canada":1700000, "Australia":1200000, "Malaysia":6000000, "Indonesia":2800000, "Peru":{n:1000000, note:"Tusán; estimates vary widely"}, "Brazil":250000 } },
+            "Colombian": { c:"#facc15", b:"foreign-born", d:{ "United States of America":1200000, "Venezuela":1500000, "Spain":400000, "Ecuador":300000, "Chile":200000 } },
+            "Cuban": { c:"#c084fc", b:"foreign-born", d:{ "United States of America":1200000, "Spain":150000, "Italy":50000, "Mexico":30000 } },
+            "Dominican": { c:"#fbbf24", b:"foreign-born", d:{ "United States of America":1200000, "Spain":150000, "Italy":50000, "Puerto Rico":80000 } },
+            "Egyptian": { c:"#fcd34d", b:"foreign-born", d:{ "Saudi Arabia":2500000, "United Arab Emirates":1500000, "United States of America":400000, "Jordan":300000 } },
+            "Filipino": { c:"#a855f7", b:"foreign-born", d:{ "United States of America":2000000, "Saudi Arabia":1000000, "United Arab Emirates":500000, "Canada":500000, "Australia":300000 } },
+            "German": { c:"#fde047", b:"ancestry", d:{ "United States of America":45000000, "Brazil":12000000, "Argentina":3000000, "Canada":3000000, "Australia":1000000, "France":300000 } },
+            "Haitian": { c:"#60a5fa", b:"foreign-born", d:{ "Dominican Republic":800000, "United States of America":1000000, "Canada":170000, "France":80000, "Brazil":200000 } },
+            "Indian": { c:"#f97316", b:"foreign-born", d:{ "United Arab Emirates":3500000, "United States of America":2700000, "Saudi Arabia":2500000, "United Kingdom":{n:1500000, b:"ancestry"}, "Canada":800000 } },
+            "Indonesian": { c:"#f87171", b:"foreign-born", d:{ "Malaysia":2000000, "Saudi Arabia":500000, "United Arab Emirates":200000, "United States of America":150000, "Netherlands":{n:100000, b:"ancestry"} } },
+            "Iranian": { c:"#38bdf8", b:"foreign-born", d:{ "United States of America":1000000, "Germany":200000, "Canada":200000, "United Kingdom":150000, "Turkey":150000 } },
+            "Irish": { c:"#22d3ee", b:"ancestry", d:{ "United States of America":30000000, "United Kingdom":6000000, "Australia":2000000, "Canada":4500000 } },
+            "Italian": { c:"#a78bfa", b:"ancestry", d:{ "Argentina":20000000, "Brazil":15000000, "United States of America":17000000, "France":400000, "Germany":800000, "Switzerland":500000 } },
+            "Jamaican": { c:"#fb7185", b:"ancestry", d:{ "United States of America":800000, "United Kingdom":800000, "Canada":300000 } },
+            "Japanese": { c:"#f0abfc", b:"ancestry", d:{ "Brazil":2000000, "United States of America":1200000, "Peru":100000, "Canada":120000, "Australia":100000 } },
+            "Korean": { c:"#818cf8", b:"ancestry", d:{ "United States of America":1900000, "China":2000000, "Japan":800000, "Canada":250000, "Brazil":100000 } },
+            "Lebanese": { c:"#fb923c", b:"ancestry", d:{ "Brazil":{n:7000000, note:"official govt estimate; IBGE survey implies far fewer"}, "Colombia":500000, "Mexico":400000, "United States of America":500000, "Argentina":500000, "Australia":200000 } },
+            "Mexican": { c:"#22c55e", b:"foreign-born", d:{ "United States of America":11000000, "Canada":100000, "Spain":50000, "Germany":20000 } },
+            "Moroccan": { c:"#e2e8f0", b:"foreign-born", d:{ "France":1500000, "Spain":800000, "Belgium":300000, "Netherlands":200000, "Italy":420000 } },
+            "Nigerian": { c:"#4ade80", b:"foreign-born", d:{ "United Kingdom":2000000, "United States of America":500000, "South Africa":300000, "Brazil":50000, "Ireland":100000 } },
+            "Pakistani": { c:"#2dd4bf", b:"foreign-born", d:{ "Saudi Arabia":2500000, "United Arab Emirates":1500000, "United Kingdom":{n:1200000, b:"ancestry"}, "United States of America":500000 } },
+            "Peruvian": { c:"#fbbf24", b:"foreign-born", d:{ "United States of America":700000, "Argentina":500000, "Spain":200000, "Chile":150000, "Italy":100000, "Japan":100000 } },
+            "Polish": { c:"#e879f9", b:"ancestry", d:{ "United States of America":10000000, "Germany":{n:800000, b:"foreign-born"}, "United Kingdom":{n:800000, b:"foreign-born"}, "France":200000, "Canada":1000000, "Brazil":100000 } },
+            "Portuguese": { c:"#34d399", b:"ancestry", d:{ "Brazil":5000000, "France":{n:1000000, b:"foreign-born"}, "United States of America":1000000, "Switzerland":{n:300000, b:"foreign-born"}, "Venezuela":300000 } },
+            "Romanian": { c:"#60a5fa", b:"foreign-born", d:{ "Italy":1000000, "Spain":800000, "Germany":700000, "United Kingdom":400000, "France":200000 } },
+            "Russian": { c:"#f87171", b:"ancestry", d:{ "Ukraine":{n:5000000, b:"ethnic", note:"pre-2022; 2001 census ~8.3M; current figure highly uncertain"}, "Kazakhstan":{n:4000000, b:"ethnic"}, "United States of America":3000000, "Germany":1200000, "Israel":1000000, "Brazil":50000 } },
+            "Somali": { c:"#a3e635", b:"foreign-born", d:{ "Kenya":500000, "United Kingdom":250000, "United States of America":200000, "Sweden":100000 } },
+            "Spanish": { c:"#facc15", b:"foreign-born", d:{ "Argentina":{n:300000, b:"ancestry"}, "Brazil":{n:200000, b:"ancestry"}, "France":200000, "United States of America":800000, "Germany":150000 } },
+            "Syrian": { c:"#fcd34d", b:"foreign-born", d:{ "Turkey":3500000, "Lebanon":1500000, "Germany":800000, "Jordan":650000, "Sweden":150000 } },
+            "Turkish": { c:"#f43f5e", b:"ancestry", d:{ "Germany":3000000, "France":500000, "Netherlands":400000, "United States of America":{n:300000, b:"foreign-born"} } },
+            "Ukrainian": { c:"#c084fc", b:"ancestry", d:{ "Russia":{n:1900000, b:"ethnic", note:"2010 census; declining"}, "Poland":{n:1500000, b:"foreign-born"}, "Canada":1400000, "United States of America":1000000, "Brazil":600000 } },
+            "Venezuelan": { c:"#f472b6", b:"foreign-born", d:{ "Colombia":2500000, "Peru":1500000, "United States of America":600000, "Chile":500000, "Brazil":400000 } },
+            "Vietnamese": { c:"#a3e635", b:"ancestry", d:{ "United States of America":2000000, "Cambodia":400000, "France":300000, "Australia":250000 } }
+        };
+
+        // --- NATIVE / RESIDENT POPULATIONS -----------------------------------------
+        const NativePop = {
+            "Brazil": { nat: "Brazilian", pop: 203000000, color: "#06b6d4" },
+            "Canada": { nat: "Canadian", pop: 38000000, color: "#f43f5e" },
+            "United States of America": { nat: "American", pop: 331000000, color: "#94a3b8" },
+            "India": { nat: "Indian", pop: 1400000000, color: "#f97316" },
+            "China": { nat: "Chinese", pop: 1400000000, color: "#ef4444" },
+            "United Kingdom": { nat: "British", pop: 67000000, color: "#f43f5e" },
+            "Germany": { nat: "German", pop: 83000000, color: "#fde047" },
+            "France": { nat: "French", pop: 65000000, color: "#a78bfa" },
+            "Italy": { nat: "Italian", pop: 59000000, color: "#a78bfa" },
+            "Japan": { nat: "Japanese", pop: 125000000, color: "#f0abfc" },
+            "Mexico": { nat: "Mexican", pop: 128000000, color: "#22c55e" },
+            "Australia": { nat: "Australian", pop: 26000000, color: "#22d3ee" },
+            "Spain": { nat: "Spanish", pop: 47000000, color: "#facc15" },
+            "Argentina": { nat: "Argentine", pop: 45000000, color: "#fbbf24" },
+            "Portugal": { nat: "Portuguese", pop: 10000000, color: "#34d399" },
+            "Saudi Arabia": { nat: "Saudi", pop: 34000000, color: "#22c55e" },
+            "United Arab Emirates": { nat: "Emirati (citizens)", pop: 1000000, color: "#38bdf8" },
+            "Colombia": { nat: "Colombian", pop: 51000000, color: "#facc15" },
+            "Peru": { nat: "Peruvian", pop: 33000000, color: "#fbbf24" },
+            "Chile": { nat: "Chilean", pop: 19000000, color: "#f43f5e" },
+            "Venezuela": { nat: "Venezuelan", pop: 28000000, color: "#f472b6" },
+            "Paraguay": { nat: "Paraguayan", pop: 7000000, color: "#f43f5e" },
+            "Ecuador": { nat: "Ecuadorian", pop: 17000000, color: "#facc15" },
+            "Bolivia": { nat: "Bolivian", pop: 12000000, color: "#a3e635" },
+            "Cuba": { nat: "Cuban", pop: 11000000, color: "#c084fc" },
+            "Dominican Republic": { nat: "Dominican", pop: 10000000, color: "#fbbf24" },
+            "Haiti": { nat: "Haitian", pop: 11000000, color: "#60a5fa" },
+            "Jamaica": { nat: "Jamaican", pop: 3000000, color: "#fb7185" },
+            "Nigeria": { nat: "Nigerian", pop: 210000000, color: "#4ade80" },
+            "South Africa": { nat: "South African", pop: 59000000, color: "#22c55e" },
+            "Kenya": { nat: "Kenyan", pop: 53000000, color: "#a3e635" },
+            "Egypt": { nat: "Egyptian", pop: 104000000, color: "#fcd34d" },
+            "Morocco": { nat: "Moroccan", pop: 37000000, color: "#e2e8f0" },
+            "Angola": { nat: "Angolan", pop: 33000000, color: "#f472b6" },
+            "Iran": { nat: "Iranian", pop: 86000000, color: "#38bdf8" },
+            "Turkey": { nat: "Turkish", pop: 85000000, color: "#f43f5e" },
+            "Lebanon": { nat: "Lebanese", pop: 7000000, color: "#fb923c" },
+            "Syria": { nat: "Syrian", pop: 21000000, color: "#fcd34d" },
+            "Jordan": { nat: "Jordanian", pop: 10000000, color: "#fcd34d" },
+            "Pakistan": { nat: "Pakistani", pop: 220000000, color: "#2dd4bf" },
+            "Bangladesh": { nat: "Bangladeshi", pop: 160000000, color: "#2dd4bf" },
+            "Afghanistan": { nat: "Afghan", pop: 38000000, color: "#e879f9" },
+            "Indonesia": { nat: "Indonesian", pop: 270000000, color: "#f87171" },
+            "Malaysia": { nat: "Malaysian", pop: 32000000, color: "#ef4444" },
+            "Philippines": { nat: "Filipino", pop: 110000000, color: "#a855f7" },
+            "Vietnam": { nat: "Vietnamese", pop: 97000000, color: "#a3e635" },
+            "Cambodia": { nat: "Cambodian", pop: 16000000, color: "#a3e635" },
+            "South Korea": { nat: "South Korean", pop: 51000000, color: "#818cf8" },
+            "Poland": { nat: "Polish", pop: 38000000, color: "#e879f9" },
+            "Ukraine": { nat: "Ukrainian", pop: 44000000, color: "#c084fc" },
+            "Russia": { nat: "Russian", pop: 144000000, color: "#f87171" },
+            "Romania": { nat: "Romanian", pop: 19000000, color: "#60a5fa" },
+            "Netherlands": { nat: "Dutch", pop: 17000000, color: "#f97316" },
+            "Belgium": { nat: "Belgian", pop: 11000000, color: "#fcd34d" },
+            "Switzerland": { nat: "Swiss", pop: 8000000, color: "#f43f5e" },
+            "Austria": { nat: "Austrian", pop: 9000000, color: "#f43f5e" },
+            "Sweden": { nat: "Swedish", pop: 10000000, color: "#2dd4bf" },
+            "Norway": { nat: "Norwegian", pop: 5000000, color: "#f43f5e" },
+            "Ireland": { nat: "Irish", pop: 5000000, color: "#22d3ee" },
+            "Greece": { nat: "Greek", pop: 10000000, color: "#38bdf8" },
+            "Israel": { nat: "Israeli", pop: 9000000, color: "#38bdf8" },
+            "Uzbekistan": { nat: "Uzbek", pop: 34000000, color: "#38bdf8" },
+            "Kazakhstan": { nat: "Kazakh", pop: 19000000, color: "#38bdf8" },
+            "New Zealand": { nat: "New Zealander", pop: 5000000, color: "#22d3ee" }
+        };
+
+        // --- HELPERS ---------------------------------------------------------------
+        // A destination cell is either a number or {n, b?, note?}. Normalise it.
+        const getN = raw => (typeof raw === 'number') ? raw : raw.n;
+        function normEntry(raw, defaultBasis) {
+            if (typeof raw === 'number') return { n: raw, b: defaultBasis, note: null };
+            return { n: raw.n, b: raw.b || defaultBasis, note: raw.note || null };
+        }
+
+        // --- REVERSE INDEX (destination -> who lives there) ------------------------
+        const CountryProfiles = {};
+        for (const [nat, info] of Object.entries(D)) {
+            for (const [dest, raw] of Object.entries(info.d)) {
+                const e = normEntry(raw, info.b);
+                if (!CountryProfiles[dest]) CountryProfiles[dest] = [];
+                CountryProfiles[dest].push({ nationality: nat, count: e.n, color: info.c, basis: e.b, note: e.note });
+            }
+        }
+
+        // --- MAP INITIALIZATION (created later, once Leaflet has loaded) ------------
+        let map = null;
+
+        // --- LEFT SIDEBAR UI -------------------------------------------------------
+        const controlsDiv = document.getElementById('controls');
+        let activeNationality = null;
+        let geoJsonLayer = null;
+
+        Object.keys(D).sort().forEach(nat => {
+            controlsDiv.innerHTML += `
+                <label>
+                    <input type="radio" name="nat" value="${nat}">
+                    <span class="custom-radio"></span>
+                    <div class="color-swatch" style="background-color: ${D[nat].c};"></div>
+                    ${nat}
+                </label>
+            `;
+        });
+
+        document.querySelectorAll('input[name="nat"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                activeNationality = e.target.value === "none" ? null : e.target.value;
+                updateMapColors();
+                if(window.innerWidth <= 768) sidebar.classList.remove('open');
+            });
+        });
+
+        // --- MAP BOOTSTRAP (runs only after the Leaflet <script> has loaded) -------
+        function initMap() {
+            map = L.map('map', { center: [25, 0], zoom: 3, minZoom: 2, maxZoom: 6, zoomControl: false, attributionControl: false });
+            L.control.zoom({ position: 'topright' }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 19 }).addTo(map);
+
+            fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    geoJsonLayer = L.geoJSON(data, {
+                        style: getStyle,
+                        onEachFeature: (feature, layer) => {
+                            layer.on({
+                                click: () => openCountryProfile(feature.properties.name),
+                                mouseover: highlightFeature,
+                                mouseout: resetHighlight
+                            });
+                        }
+                    }).addTo(map);
+                })
+                .catch(err => { document.getElementById('loading').innerHTML = "Error loading map boundaries (couldn't fetch the GeoJSON — it may be blocked by the host)."; });
+        }
+
+        // Wait until the Leaflet library is actually present before booting the map.
+        // If it never appears, the external leaflet.js was blocked or stripped by the
+        // host (some preview sandboxes remove <script src> via CSP) — show a clear
+        // message instead of a bare "L is not defined".
+        (function waitForLeaflet(tries) {
+            tries = tries || 0;
+            if (window.L) { initMap(); return; }
+            if (tries > 50) {  // ~5 seconds
+                document.getElementById('loading').innerHTML =
+                    "Map library (Leaflet) failed to load.<br>The leaflet.js script was blocked or removed by the host.<br>Self-host leaflet.js, or use an environment that allows the CDN.";
+                return;
+            }
+            setTimeout(() => waitForLeaflet(tries + 1), 100);
+        })();
+
+        // --- STYLING LOGIC ---------------------------------------------------------
+        function getStyle() { return { fillColor: '#1e293b', weight: 1, opacity: 1, color: '#334155', fillOpacity: 1 }; }
+
+        function updateMapColors() {
+            if (!geoJsonLayer) return;
+            const curr = activeNationality ? D[activeNationality] : null;
+            let maxVal = curr ? Math.max(...Object.values(curr.d).map(getN)) : 0;
+
+            geoJsonLayer.eachLayer(layer => {
+                const name = layer.feature.properties.name;
+                let style = getStyle();
+
+                if (curr && curr.d[name] !== undefined) {
+                    const count = getN(curr.d[name]);
+                    const intensity = (count / maxVal) * 0.75 + 0.25;
+                    style.fillColor = curr.c;
+                    style.fillOpacity = intensity;
+                    style.weight = 1; style.color = '#ffffff'; style.opacity = 0.3;
+                } else if (activeNationality) {
+                    style.fillColor = '#0f172a'; style.fillOpacity = 0.8; style.weight = 0;
+                }
+                layer.setStyle(style);
+            });
+        }
+
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({ weight: 2, color: '#ffffff', opacity: 1, fillOpacity: layer.options.fillOpacity || 1 });
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) layer.bringToFront();
+        }
+
+        function resetHighlight(e) {
+            geoJsonLayer.resetStyle(e.target);
+            updateMapColors();
+        }
+
+        // --- RIGHT PANEL LOGIC -----------------------------------------------------
+        function openCountryProfile(countryName) {
+            profileTitle.innerText = countryName;
+            profileList.innerHTML = '';
+
+            // 1. Clone the reverse-index array so we never mutate the cached data.
+            //    (Previously this aliased CountryProfiles[countryName] and push()ed the
+            //     native row into it, so re-opening a country duplicated that row.)
+            let demographics = [...(CountryProfiles[countryName] || [])];
+
+            // 2. Inject the resident/native population if we have one for this country.
+            if (NativePop[countryName]) {
+                const native = NativePop[countryName];
+                demographics.push({
+                    nationality: native.nat,
+                    count: native.pop,
+                    color: native.color,
+                    basis: "resident population",
+                    note: null
+                });
+            }
+
+            // 3. Sort all rows (native + diaspora) by size descending.
+            demographics.sort((a, b) => b.count - a.count);
+
+            if (demographics.length === 0) {
+                profileList.innerHTML = `<div class="no-data-msg">No demographic data available for this country.</div>`;
+            } else {
+                demographics.forEach(dem => {
+                    const item = document.createElement('div');
+                    item.className = 'profile-item';
+                    const sub = dem.basis + (dem.note ? ' · ' + dem.note : '');
+                    item.innerHTML = `
+                        <div class="profile-item-left">
+                            <div class="color-swatch" style="background-color: ${dem.color};"></div>
+                            <div>
+                                <span>${dem.nationality}</span>
+                                <div style="font-size:0.7rem; color:#64748b; margin-top:2px; max-width:210px;">${sub}</div>
+                            </div>
+                        </div>
+                        <div class="profile-item-count">${dem.count.toLocaleString()}</div>
+                    `;
+
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const radio = document.querySelector(`input[name="nat"][value="${dem.nationality}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                            activeNationality = dem.nationality;
+                            updateMapColors();
+                        } else {
+                            document.querySelector('input[name="nat"][value="none"]').checked = true;
+                            activeNationality = null;
+                            updateMapColors();
+                        }
+                    });
+
+                    profileList.appendChild(item);
+                });
+            }
+
+            profilePanel.classList.add('open');
+        }
+    </script>
+</body>
+</html>
