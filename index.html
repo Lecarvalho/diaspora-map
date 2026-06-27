@@ -125,6 +125,9 @@
     <div id="sidebar">
         <h2>🌍 Filter by Origin</h2>
         <p>Click a country on the map to see its demographics, OR use this to highlight a specific diaspora.</p>
+        <div style="font-size:0.65rem; color:#64748b; line-height:1.4; padding:8px 0 10px; border-bottom:1px solid var(--border); margin-bottom:8px;">
+            Sources: UN DESA migrant stock, UNHCR/R4V, national censuses. <b>Basis differs per row</b> &mdash; ancestry vs. foreign-born vs. refugees (shown under each entry). Refugee corridors as of 2025&ndash;26; other figures ~2021&ndash;24.
+        </div>
         <div class="radio-group" id="controls">
             <label>
                 <input type="radio" name="nat" value="none" checked>
@@ -170,7 +173,7 @@
         // NOTE: basis tags are best-effort; many diaspora figures genuinely mix definitions.
         const D = {
             "Angolan": { c:"#f472b6", b:"foreign-born", d:{ "Portugal":200000, "Brazil":120000, "South Africa":50000, "United States of America":30000 } },
-            "Afghan": { c:"#e879f9", b:"foreign-born", d:{ "Pakistan":3000000, "Iran":3000000, "Germany":250000, "United States of America":150000, "Canada":80000 } },
+            "Afghan": { c:"#e879f9", b:"foreign-born", d:{ "Iran":{n:2700000, note:"was ~4.5M; ~1.8M expelled in 2025 (UNHCR)"}, "Pakistan":{n:1800000, note:"was ~3M; mass expulsions 2023–25"}, "Germany":400000, "United States of America":200000, "Canada":80000 } },
             "Bangladeshi": { c:"#2dd4bf", b:"foreign-born", d:{ "India":{n:3000000, note:"politically contested; no firm census basis"}, "Saudi Arabia":2500000, "United Arab Emirates":1500000, "United Kingdom":500000, "Malaysia":300000 } },
             "Brazilian": { c:"#06b6d4", b:"foreign-born", d:{ "United States of America":1500000, "Portugal":400000, "Paraguay":350000, "Japan":200000, "Canada":120000, "United Kingdom":150000, "Argentina":100000 } },
             "British": { c:"#f43f5e", b:"foreign-born", d:{ "Australia":1200000, "United States of America":750000, "Canada":600000, "Spain":300000, "France":200000 } },
@@ -183,7 +186,7 @@
             "Filipino": { c:"#a855f7", b:"foreign-born", d:{ "United States of America":2000000, "Saudi Arabia":1000000, "United Arab Emirates":500000, "Canada":500000, "Australia":300000 } },
             "German": { c:"#fde047", b:"ancestry", d:{ "United States of America":45000000, "Brazil":12000000, "Argentina":3000000, "Canada":3000000, "Australia":1000000, "France":300000 } },
             "Haitian": { c:"#60a5fa", b:"foreign-born", d:{ "Dominican Republic":800000, "United States of America":1000000, "Canada":170000, "France":80000, "Brazil":200000 } },
-            "Indian": { c:"#f97316", b:"foreign-born", d:{ "United Arab Emirates":3500000, "United States of America":2700000, "Saudi Arabia":2500000, "United Kingdom":{n:1500000, b:"ancestry"}, "Canada":800000 } },
+            "Indian": { c:"#f97316", b:"foreign-born", d:{ "United Arab Emirates":3500000, "United States of America":2700000, "Saudi Arabia":2500000, "United Kingdom":{n:1500000, b:"ancestry"}, "Canada":{n:1100000, note:"2021 census ~898k India-born; risen sharply since (India = Canada's top source). ~1.86M by ancestry"} } },
             "Indonesian": { c:"#f87171", b:"foreign-born", d:{ "Malaysia":2000000, "Saudi Arabia":500000, "United Arab Emirates":200000, "United States of America":150000, "Netherlands":{n:100000, b:"ancestry"} } },
             "Iranian": { c:"#38bdf8", b:"foreign-born", d:{ "United States of America":1000000, "Germany":200000, "Canada":200000, "United Kingdom":150000, "Turkey":150000 } },
             "Irish": { c:"#22d3ee", b:"ancestry", d:{ "United States of America":30000000, "United Kingdom":6000000, "Australia":2000000, "Canada":4500000 } },
@@ -203,26 +206,26 @@
             "Russian": { c:"#f87171", b:"ancestry", d:{ "Ukraine":{n:5000000, b:"ethnic", note:"pre-2022; 2001 census ~8.3M; current figure highly uncertain"}, "Kazakhstan":{n:4000000, b:"ethnic"}, "United States of America":3000000, "Germany":1200000, "Israel":1000000, "Brazil":50000 } },
             "Somali": { c:"#a3e635", b:"foreign-born", d:{ "Kenya":500000, "United Kingdom":250000, "United States of America":200000, "Sweden":100000 } },
             "Spanish": { c:"#facc15", b:"foreign-born", d:{ "Argentina":{n:300000, b:"ancestry"}, "Brazil":{n:200000, b:"ancestry"}, "France":200000, "United States of America":800000, "Germany":150000 } },
-            "Syrian": { c:"#fcd34d", b:"foreign-born", d:{ "Turkey":3500000, "Lebanon":1500000, "Germany":800000, "Jordan":650000, "Sweden":150000 } },
+            "Syrian": { c:"#fcd34d", b:"foreign-born", d:{ "Turkey":{n:2700000, note:"post-Assad returns since Dec 2024; ~4.5M remain in region (UNHCR 2025)"}, "Lebanon":1400000, "Germany":800000, "Jordan":{n:412000, note:"down from ~650k (UNHCR Apr 2026)"}, "Sweden":150000 } },
             "Turkish": { c:"#f43f5e", b:"ancestry", d:{ "Germany":3000000, "France":500000, "Netherlands":400000, "United States of America":{n:300000, b:"foreign-born"} } },
-            "Ukrainian": { c:"#c084fc", b:"ancestry", d:{ "Russia":{n:1900000, b:"ethnic", note:"2010 census; declining"}, "Poland":{n:1500000, b:"foreign-born"}, "Canada":1400000, "United States of America":1000000, "Brazil":600000 } },
-            "Venezuelan": { c:"#f472b6", b:"foreign-born", d:{ "Colombia":2500000, "Peru":1500000, "United States of America":600000, "Chile":500000, "Brazil":400000 } },
+            "Ukrainian": { c:"#c084fc", b:"ancestry", d:{ "Germany":{n:1180000, b:"war refugees (2022+)", note:"UNHCR 2025 — largest host"}, "Russia":{n:1200000, b:"refugee-like (2023)", note:"UNHCR; not updated since 2023"}, "Poland":{n:1000000, b:"war refugees (2022+)"}, "Canada":1400000, "United States of America":1000000, "Czech Republic":{n:390000, b:"war refugees (2022+)"}, "Brazil":600000 } },
+            "Venezuelan": { c:"#f472b6", b:"foreign-born", d:{ "Colombia":{n:2810000, note:"R4V/UNHCR, Mar 2025"}, "Peru":1660000, "Brazil":680000, "Chile":670000, "Ecuador":440000, "United States of America":700000 } },
             "Vietnamese": { c:"#a3e635", b:"ancestry", d:{ "United States of America":2000000, "Cambodia":400000, "France":300000, "Australia":250000 } }
         };
 
         // --- NATIVE / RESIDENT POPULATIONS -----------------------------------------
         const NativePop = {
-            "Brazil": { nat: "Brazilian", pop: 203000000, color: "#06b6d4" },
-            "Canada": { nat: "Canadian", pop: 38000000, color: "#f43f5e" },
-            "United States of America": { nat: "American", pop: 331000000, color: "#94a3b8" },
-            "India": { nat: "Indian", pop: 1400000000, color: "#f97316" },
-            "China": { nat: "Chinese", pop: 1400000000, color: "#ef4444" },
+            "Brazil": { nat: "Brazilian", pop: 212000000, color: "#06b6d4" },
+            "Canada": { nat: "Canadian", pop: 41000000, color: "#f43f5e" },
+            "United States of America": { nat: "American", pop: 340000000, color: "#94a3b8" },
+            "India": { nat: "Indian", pop: 1450000000, color: "#f97316" },
+            "China": { nat: "Chinese", pop: 1410000000, color: "#ef4444" },
             "United Kingdom": { nat: "British", pop: 67000000, color: "#f43f5e" },
             "Germany": { nat: "German", pop: 83000000, color: "#fde047" },
             "France": { nat: "French", pop: 65000000, color: "#a78bfa" },
             "Italy": { nat: "Italian", pop: 59000000, color: "#a78bfa" },
             "Japan": { nat: "Japanese", pop: 125000000, color: "#f0abfc" },
-            "Mexico": { nat: "Mexican", pop: 128000000, color: "#22c55e" },
+            "Mexico": { nat: "Mexican", pop: 131000000, color: "#22c55e" },
             "Australia": { nat: "Australian", pop: 26000000, color: "#22d3ee" },
             "Spain": { nat: "Spanish", pop: 47000000, color: "#facc15" },
             "Argentina": { nat: "Argentine", pop: 45000000, color: "#fbbf24" },
@@ -240,28 +243,28 @@
             "Dominican Republic": { nat: "Dominican", pop: 10000000, color: "#fbbf24" },
             "Haiti": { nat: "Haitian", pop: 11000000, color: "#60a5fa" },
             "Jamaica": { nat: "Jamaican", pop: 3000000, color: "#fb7185" },
-            "Nigeria": { nat: "Nigerian", pop: 210000000, color: "#4ade80" },
-            "South Africa": { nat: "South African", pop: 59000000, color: "#22c55e" },
-            "Kenya": { nat: "Kenyan", pop: 53000000, color: "#a3e635" },
-            "Egypt": { nat: "Egyptian", pop: 104000000, color: "#fcd34d" },
+            "Nigeria": { nat: "Nigerian", pop: 230000000, color: "#4ade80" },
+            "South Africa": { nat: "South African", pop: 63000000, color: "#22c55e" },
+            "Kenya": { nat: "Kenyan", pop: 56000000, color: "#a3e635" },
+            "Egypt": { nat: "Egyptian", pop: 116000000, color: "#fcd34d" },
             "Morocco": { nat: "Moroccan", pop: 37000000, color: "#e2e8f0" },
-            "Angola": { nat: "Angolan", pop: 33000000, color: "#f472b6" },
-            "Iran": { nat: "Iranian", pop: 86000000, color: "#38bdf8" },
+            "Angola": { nat: "Angolan", pop: 37000000, color: "#f472b6" },
+            "Iran": { nat: "Iranian", pop: 90000000, color: "#38bdf8" },
             "Turkey": { nat: "Turkish", pop: 85000000, color: "#f43f5e" },
             "Lebanon": { nat: "Lebanese", pop: 7000000, color: "#fb923c" },
             "Syria": { nat: "Syrian", pop: 21000000, color: "#fcd34d" },
             "Jordan": { nat: "Jordanian", pop: 10000000, color: "#fcd34d" },
-            "Pakistan": { nat: "Pakistani", pop: 220000000, color: "#2dd4bf" },
-            "Bangladesh": { nat: "Bangladeshi", pop: 160000000, color: "#2dd4bf" },
+            "Pakistan": { nat: "Pakistani", pop: 245000000, color: "#2dd4bf" },
+            "Bangladesh": { nat: "Bangladeshi", pop: 175000000, color: "#2dd4bf" },
             "Afghanistan": { nat: "Afghan", pop: 38000000, color: "#e879f9" },
-            "Indonesia": { nat: "Indonesian", pop: 270000000, color: "#f87171" },
+            "Indonesia": { nat: "Indonesian", pop: 281000000, color: "#f87171" },
             "Malaysia": { nat: "Malaysian", pop: 32000000, color: "#ef4444" },
-            "Philippines": { nat: "Filipino", pop: 110000000, color: "#a855f7" },
-            "Vietnam": { nat: "Vietnamese", pop: 97000000, color: "#a3e635" },
+            "Philippines": { nat: "Filipino", pop: 115000000, color: "#a855f7" },
+            "Vietnam": { nat: "Vietnamese", pop: 101000000, color: "#a3e635" },
             "Cambodia": { nat: "Cambodian", pop: 16000000, color: "#a3e635" },
             "South Korea": { nat: "South Korean", pop: 51000000, color: "#818cf8" },
             "Poland": { nat: "Polish", pop: 38000000, color: "#e879f9" },
-            "Ukraine": { nat: "Ukrainian", pop: 44000000, color: "#c084fc" },
+            "Ukraine": { nat: "Ukrainian", pop: 38000000, note: "pre-war ~44M; ~5.7M now refugees abroad", color: "#c084fc" },
             "Russia": { nat: "Russian", pop: 144000000, color: "#f87171" },
             "Romania": { nat: "Romanian", pop: 19000000, color: "#60a5fa" },
             "Netherlands": { nat: "Dutch", pop: 17000000, color: "#f97316" },
@@ -416,7 +419,7 @@
                     count: native.pop,
                     color: native.color,
                     basis: "resident population",
-                    note: null
+                    note: native.note || null
                 });
             }
 
